@@ -29,7 +29,7 @@ bool ReadProcessMemoryEx(HANDLE hProcess, uintptr_t address, void* buffer, size_
 std::vector<MemoryRegion> GetMemoryRegions(HANDLE hProcess) {
     std::vector<MemoryRegion> regions;
     MEMORY_BASIC_INFORMATION mbi;
-    uintptr_t address = 0;
+    uintptr_t address {0};
 
     while (VirtualQueryEx(hProcess, reinterpret_cast<LPCVOID>(address), &mbi, sizeof(mbi))) {
         if (mbi.State == MEM_COMMIT && (mbi.Protect & PAGE_READWRITE)) {
@@ -86,7 +86,7 @@ std::vector<uintptr_t> SearchValue(
     std::vector<std::thread> threads;
     size_t chunkSize = regionsToSearch.size() / threadCount;
 
-    for (size_t i = 0; i < threadCount; ++i) {
+    for (size_t i {0}; i < threadCount; ++i) {
         size_t start = i * chunkSize;
         size_t end = (i == threadCount - 1) ? regionsToSearch.size() : start + chunkSize;
         threads.emplace_back(searchTask, start, end);
@@ -141,7 +141,7 @@ int main() {
         return 1;
     }
 
-    int initialValue;
+    int initialValue {0};
     std::cout << "Enter initial value (e.g. current ammo): ";
     std::cin >> initialValue;
 
@@ -175,7 +175,7 @@ int main() {
     resultFile.close();
 
     while (true) {
-        int newValue;
+        int newValue {0};
         std::cout << "Enter new value (e.g. ammo after shot, 0 to exit): ";
         std::cin >> newValue;
 
