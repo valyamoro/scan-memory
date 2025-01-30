@@ -9,6 +9,7 @@
 #include <mutex>
 #include <atomic>
 #include <immintrin.h>
+#include <tlhelp32.h>
 
 struct MemoryRegion {
     uintptr_t baseAddress;
@@ -130,10 +131,33 @@ std::vector<MemoryRegion> FilterRegions(const std::vector<MemoryRegion>& regions
 int main() {
     auto startTotal = std::chrono::high_resolution_clock::now();
 
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnapshot == INVALID_HANDLE_VALUE) {
+        return 1;
+    }
+
+    PROCESSENTRY32 ProcEntry;
+    ProcEntry.dwSize = sizeof(PROCESSENTRY32);
+
+    DWORD processId;
+    std::string processName;
+    std::cout << "Write process name please...\t";
+    std::cin >> processName;
+    if (Process32First(hSnapshot, &ProcEntry)) {
+        do {
+            if (!strcmp(ProcEntry.szExeFile, processName.c_str())) {
+                CloseHandle(hSnapshot);
+                processId = ProcEntry.th32ProcessID;
+                
+                break;
+            }
+        } while (Process32Next(hSnapshot, &ProcEntry));
+    }
+
     HANDLE hProcess = OpenProcess(
         PROCESS_VM_READ | PROCESS_QUERY_INFORMATION | PROCESS_VM_OPERATION | PROCESS_VM_WRITE,
         FALSE,
-        13736
+        processId
     );
 
     if (!hProcess) {
