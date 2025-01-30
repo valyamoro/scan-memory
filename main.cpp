@@ -10,6 +10,8 @@
 #include <atomic>
 #include <immintrin.h>
 #include <tlhelp32.h>
+#include <string>
+#include <map>
 
 struct MemoryRegion {
     uintptr_t baseAddress;
@@ -128,6 +130,26 @@ std::vector<MemoryRegion> FilterRegions(const std::vector<MemoryRegion>& regions
     return filtered;
 }
 
+std::map<std::string, std::string> ReadConfigFile(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open file: " + filePath);
+    }
+
+    std::map<std::string, std::string> config;
+    std::string line;
+    while (std::getline(file, line)) {
+        size_t delimeterPos = line.find('=');
+        if (delimeterPos != std::string::npos) {
+            std::string key = line.substr(0, delimeterPos);
+            std::string value = line.substr(delimeterPos + 1);
+            config[key] = value;
+        }
+    }
+
+    return config;
+}
+
 int main() {
     auto startTotal = std::chrono::high_resolution_clock::now();
 
@@ -140,9 +162,9 @@ int main() {
     ProcEntry.dwSize = sizeof(PROCESSENTRY32);
 
     DWORD processId;
-    std::string processName;
-    std::cout << "Write process name please...\t";
-    std::cin >> processName;
+    auto config = ReadConfigFile("config.txt");
+    std::string processName = config["PROCESS_NAME"];
+
     if (Process32First(hSnapshot, &ProcEntry)) {
         do {
             if (!strcmp(ProcEntry.szExeFile, processName.c_str())) {
