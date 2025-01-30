@@ -18,7 +18,12 @@ struct MemoryRegion {
     size_t size;
 };
 
-bool ReadProcessMemoryEx(HANDLE hProcess, uintptr_t address, void* buffer, size_t size) {
+bool ReadProcessMemoryEx(
+    const HANDLE hProcess,
+    const uintptr_t address,
+    void* buffer, 
+    const size_t size
+) {
     SIZE_T bytesRead;
     return ReadProcessMemory(
         hProcess,
@@ -29,7 +34,7 @@ bool ReadProcessMemoryEx(HANDLE hProcess, uintptr_t address, void* buffer, size_
     );
 }
 
-std::vector<MemoryRegion> GetMemoryRegions(HANDLE hProcess) {
+std::vector<MemoryRegion> GetMemoryRegions(const HANDLE hProcess) {
     std::vector<MemoryRegion> regions;
     MEMORY_BASIC_INFORMATION mbi;
     uintptr_t address {0};
@@ -50,8 +55,8 @@ std::vector<MemoryRegion> GetMemoryRegions(HANDLE hProcess) {
 
 template <typename T>
 std::vector<uintptr_t> SearchValue(
-    HANDLE hProcess,
-    T value,
+    const HANDLE hProcess,
+    const T value,
     const std::vector<MemoryRegion>& regionsToSearch
 ) {
     const size_t maxBufferSize = 4096 * 1024;
@@ -61,7 +66,7 @@ std::vector<uintptr_t> SearchValue(
     auto searchTask = [&](size_t start, size_t end) {
         std::vector<uint8_t> localBuffer(maxBufferSize);
 
-        for (size_t i = start; i < end; ++i) {
+        for (size_t i = start; i < end; i++) {
             const auto& region = regionsToSearch[i];
 
             if (region.size < sizeof(T)) {
@@ -71,10 +76,11 @@ std::vector<uintptr_t> SearchValue(
             size_t bytesRead = std::min(region.size, maxBufferSize);
 
             if (ReadProcessMemoryEx(hProcess, region.baseAddress, localBuffer.data(), bytesRead)) {
-                for (size_t j = 0; j <= bytesRead - sizeof(T); j += sizeof(T)) {
+                for (size_t j {0}; j <= bytesRead - sizeof(T); j += sizeof(T)) {
                     T* current = reinterpret_cast<T*>(&localBuffer[j]);
                     if (*current == value) {
                         std::lock_guard<std::mutex> lock(resultsMutex);
+
                         results.push_back(region.baseAddress + j);
                     }
                 }
@@ -83,7 +89,7 @@ std::vector<uintptr_t> SearchValue(
     };
 
     const size_t threadCount = std::min<size_t>(
-        static_cast<size_t>(std::thread::hardware_concurrency()), 
+        static_cast<size_t>(std::thread::hardware_concurrency()),
         regionsToSearch.size()
     );
     std::vector<std::thread> threads;
@@ -92,6 +98,7 @@ std::vector<uintptr_t> SearchValue(
     for (size_t i {0}; i < threadCount; ++i) {
         size_t start = i * chunkSize;
         size_t end = (i == threadCount - 1) ? regionsToSearch.size() : start + chunkSize;
+
         threads.emplace_back(searchTask, start, end);
     }
 
